@@ -1,0 +1,44 @@
+---
+title: "Testumgebung_App"
+author: "Julian"
+date: "2 6 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r cars}
+library(dplyr)
+library(tidyverse)
+library(readr)
+library(sf)
+library(osmdata)
+library(tmap)
+library(eurostat)
+library(plotly)
+```
+
+```{r}
+df <- read_csv("data/schadstoffe-zeitreihen.csv")
+geo_data <- read_rds("data/geo_schadstoffe.rds") %>%
+  inner_join(df, by = "standort_id")  %>%
+  select(c("standort_id", "geometry"))
+geo_data <-geo_data[!duplicated(geo_data$standort_id), ] # considerably faster than distinct()
+```
+
+### Deutschlandkarte mit Bundeslandgrenzen
+```{r}
+
+sf <- eurostat::get_eurostat_geospatial(output_class = "sf", nuts_level = 1)
+sf_germany <- sf %>% filter(CNTR_CODE=="DE") 
+
+
+p <- sf_germany %>%
+  ggplot() +
+  geom_sf() +
+  geom_sf(data = geo_data, color = "red")
+ggplotly(p)
+```
+
