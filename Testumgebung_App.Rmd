@@ -18,6 +18,7 @@ library(osmdata)
 library(tmap)
 library(eurostat)
 library(plotly)
+library(glue)
 ```
 
 ```{r}
@@ -40,5 +41,42 @@ p <- sf_germany %>%
   geom_sf() +
   geom_sf(data = geo_data, color = "red")
 ggplotly(p)
+```
+
+### Plot the change of certain stations and variables
+
+```{r}
+vars = c("kohlenmonoxid", "stickstoffmonoxid")
+station = "München/Landshuter Allee"
+range = c("2020-01-01", "2021-01-01")
+
+scale <- function(x, na.rm = FALSE) (x / first(x))
+
+df %>%
+  filter(standort == station) %>%
+  filter(datum >= range[1] & datum <= range[2]) %>%
+  select(c(standort, datum, vars)) %>%
+  mutate_at(vars, scale)%>%
+  pivot_longer(cols = vars, names_to = "variables") %>%
+  ggplot(aes(datum, value, color = variables)) +
+  geom_line(size = 0.5)
+  
+```
+
+### Größten Verschmutzer je nach Zeitraum und Variable
+```{r}
+var = c("stickstoffmonoxid")
+range = c("2020-01-01", "2021-01-01")
+
+df %>%
+  select(c("datum", "standort", var)) %>%
+  group_by(standort) %>%
+  summarise(mean = mean(!!sym(var), na.rm = TRUE)) %>%
+  arrange(mean) %>%
+  ggplot(aes(y = fct_reorder(standort, mean), x = mean)) +
+  geom_bar(stat = "identity") +
+  labs(title = glue::glue("Mittlerer Wert der {var}-Emissionen"),
+       y = "Standort", x = "Mittlerer Wert der Konzentration")
+
 ```
 
