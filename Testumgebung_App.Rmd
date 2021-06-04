@@ -27,6 +27,8 @@ geo_data <- read_rds("data/geo_schadstoffe.rds") %>%
   inner_join(df, by = "standort_id")  %>%
   select(c("standort_id", "geometry"))
 geo_data <-geo_data[!duplicated(geo_data$standort_id), ] # considerably faster than distinct()
+standorte <- df[!duplicated(df$standort),"standort"]
+vars <- as.data.frame(names(df)[4:11])
 ```
 
 ### Deutschlandkarte mit Bundeslandgrenzen
