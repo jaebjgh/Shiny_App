@@ -31,6 +31,32 @@ standorte <- df[!duplicated(df$standort),"standort"]
 vars <- as.data.frame(names(df)[4:11])
 ```
 
+```{r}
+temp_df <- df
+for(i in standorte){
+  ds <- typeof(i)
+  x <- temp_df %>% 
+    filter(standort == i) %>%
+    select(kohlenmonoxid)%>%
+    summarise(sum(!is.na(.))) 
+  if(x == 0){
+    temp_df <- temp_df %>%
+      filter(standort != i)
+    y <- "as"
+  }
+}
+
+for(i in standorte[,]){
+  x <- temp_df %>% 
+    filter(standort == i) %>%
+    select(stickstoffmonoxid)%>%
+    summarise(sum(!is.na(.))) 
+  print(x)
+  flush.console()
+}
+
+```
+
 ### Deutschlandkarte mit Bundeslandgrenzen
 ```{r}
 

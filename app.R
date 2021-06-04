@@ -20,7 +20,6 @@ library(glue)
 library(showtext)
 library(bslib)
 library(thematic)
-library(shinydashboard)
 
 # Setup Theme
 my_theme <- bs_theme(bootswatch = "simplex",
@@ -35,8 +34,9 @@ geo_data <- read_rds("data/geo_schadstoffe.rds") %>%
     inner_join(df, by = "standort_id")  %>%
     select(c("standort_id", "geometry"))
 geo_data <-geo_data[!duplicated(geo_data$standort_id), ] # considerably faster than distinct()
-standorte <- df[!duplicated(df$standort),"standort"] #alle standorte
-vars <- as.data.frame(names(df)[4:11]) # alle Variablen
+standorte <- df[!duplicated(df$standort),"standort"] %>% rename("Standort" = "standort") #alle standorte
+vars <- as.data.frame(x = names(df)[4:8]) %>% rename("Schadstoff" = "names(df)[4:8]") # alle Variablen
+
 
 # Define UI for application 
 ui <- fluidPage(
@@ -67,7 +67,9 @@ server <- function(input, output) {
             mutate_at(input$select_vars, scale)%>%
             pivot_longer(cols =  input$select_vars, names_to = "variables") %>%
             ggplot(aes(datum, value, color = variables)) +
-            geom_line(size = 0.5)
+            geom_line(size = 0.5) +
+            labs(title = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen"),
+                 y = "Veränderung relativ zum Beginn", x = "Datum")
     })
 }
 
