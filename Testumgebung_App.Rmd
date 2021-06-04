@@ -80,15 +80,17 @@ range = c("2020-01-01", "2021-01-01")
 
 scale <- function(x, na.rm = FALSE) (x / first(x))
 
-df %>%
+p <- df %>%
   filter(standort == station) %>%
   filter(datum >= range[1] & datum <= range[2]) %>%
   select(c(standort, datum, vars)) %>%
   mutate_at(vars, scale)%>%
   pivot_longer(cols = vars, names_to = "variables") %>%
   ggplot(aes(datum, value, color = variables)) +
-  geom_line(size = 0.5)
+  geom_line(size = 0.5) +
+  labs(title = "")
   
+plotly::ggplotly(p)
 ```
 
 ### Größten Verschmutzer je nach Zeitraum und Variable

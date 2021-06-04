@@ -12,6 +12,7 @@ library(dplyr)
 library(tidyverse)
 library(readr)
 library(sf)
+library(plotly)
 library(osmdata)
 library(tmap)
 library(eurostat)
@@ -60,7 +61,7 @@ server <- function(input, output) {
     output$first_plot <- renderPlot({
         scale <- function(x, na.rm = TRUE) (x / first(na.omit(x)))
         
-        df %>%
+        p <- df %>%
             filter(standort == input$select_site) %>%
             filter(datum >= input$slider[1] & datum <= input$slider[2] ) %>%
             select(c(standort, datum, input$select_vars)) %>%
@@ -70,6 +71,7 @@ server <- function(input, output) {
             geom_line(size = 0.5) +
             labs(title = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen"),
                  y = "Veränderung relativ zum Beginn", x = "Datum")
+        ggplotly(p)
     })
 }
 
