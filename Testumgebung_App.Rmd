@@ -27,32 +27,28 @@ geo_data <- read_rds("data/geo_schadstoffe.rds") %>%
   inner_join(df, by = "standort_id")  %>%
   select(c("standort_id", "geometry"))
 geo_data <-geo_data[!duplicated(geo_data$standort_id), ] # considerably faster than distinct()
-standorte <- df[!duplicated(df$standort),"standort"]
-vars <- as.data.frame(names(df)[4:11])
+standorte <- as.vector(df[!duplicated(df$standort), "standort"])[['standort']] # make a list
+vars <- as.data.frame(x = names(df)[4:8]) %>% rename("Schadstoff" = "names(df)[4:8]") # alle Variablen
+vars <- vars[["Schadstoff"]]
 ```
 
 ```{r}
-temp_df <- df
-for(i in standorte){
-  ds <- typeof(i)
-  x <- temp_df %>% 
-    filter(standort == i) %>%
-    select(kohlenmonoxid)%>%
-    summarise(sum(!is.na(.))) 
-  if(x == 0){
-    temp_df <- temp_df %>%
-      filter(standort != i)
-    y <- "as"
-  }
-}
 
-for(i in standorte[,]){
-  x <- temp_df %>% 
-    filter(standort == i) %>%
-    select(stickstoffmonoxid)%>%
-    summarise(sum(!is.na(.))) 
-  print(x)
-  flush.console()
+
+calculate_valid_standorte <- function(){
+  temp_df <- df
+  for(i in standorte){
+    ds <- typeof(i)
+    x <- temp_df %>% 
+      filter(standort == i) %>%
+      select(kohlenmonoxid)%>%
+      summarise(sum(!is.na(.))) 
+    if(x == 0){
+      temp_df <- temp_df %>%
+        filter(standort != i)
+      y <- "as"
+    }
+  }  
 }
 
 ```
