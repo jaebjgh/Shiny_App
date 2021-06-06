@@ -44,6 +44,7 @@ vars <- vars[["Schadstoff"]]
 ui <- fluidPage(
     theme = my_theme,
     titlePanel("Airquality"),
+    radioButtons("current_theme", "App Theme:", c("Light" = "simplex", "Dark" = "slate")),
     sidebarLayout(
         sidebarPanel(
             sliderInput("slider", label = "Select the range of the displayed data.", min = min(df$datum), max = max(df$datum), value = c(min(df$datum), max(df$datum))),
@@ -57,25 +58,31 @@ ui <- fluidPage(
 )
 
 # Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
     
-    calculate_valid_standorte <- function(){
+    
+    standorte_valid <- reactive({
         temp_df <- df
         for(i in standorte_all){
-            x <- temp_df %>% 
+            for(x in input$select_vars){
+                x <- temp_df %>% 
                 filter(standort == i) %>%
                 select(input$select_vars)%>%
                 summarise(sum(!is.na(.))) 
-            if(x == 0){
-                temp_df <- temp_df %>%
-                    filter(standort != i)
+                if(x == 0){
+                    temp_df <- temp_df %>%
+                        filter(standort != i)
+                }
             }
+            
         }
-        standorte_valid <- temp_df[!duplicated(temp_df$Standort),"Standort"][['standort']]
-        return(standorte_valid)
-    }
+        standorte_valid <- (temp_df[!duplicated(temp_df$Standort),"Standort"][['standort']])
+    })
     
     has_emission <- function(){
+        if(length(input$select_vars) == 0){
+            return (TRUE)
+        } 
         x <- df %>% 
             filter(standort ==  input$select_site) %>%
             select(input$select_vars)%>%
@@ -83,17 +90,15 @@ server <- function(input, output) {
         x >= 1
     }
 
-    standorte_valid <- reactive({
-        calculate_valid_standorte()
-    })
+    
     
     output$first_plot <- renderPlot({
         
         scale <- function(x, na.rm = TRUE) (x / first(na.omit(x)))
         
         validate(
-            need(input$select_vars, "Check at least one emission"),
-            need(has_emission(), "Emission not available for this site")
+            need(input$select_vars, "Check at least one emission!"),
+            need(has_emission(), "Emission not available for this site. Sorry.")
         )
         df %>%
             filter(standort == input$select_site) %>%
@@ -105,6 +110,12 @@ server <- function(input, output) {
             geom_line(size = 0.5) +
             labs(title = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen"),
                  y = "Veränderung relativ zum Beginn", x = "Datum")
+    })
+    observe({
+        # Make sure theme is kept current with desired
+        session$setCurrentTheme(
+            bs_theme_update(my_theme, bootswatch = input$current_theme)
+        )
     })
 }
 
