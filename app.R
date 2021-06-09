@@ -39,8 +39,14 @@ standorte_valid <- df[!duplicated(df$standort),"standort"][['standort']] #alle s
 standorte_all <- standorte_valid
 vars <- as.data.frame(x = names(df)[4:8]) %>% rename("Schadstoff" = "names(df)[4:8]") # alle Variablen
 vars <- vars[["Schadstoff"]]
+
+##data for the map
 sf <- eurostat::get_eurostat_geospatial(output_class = "sf", nuts_level = 1)
 sf_germany <- sf %>% filter(CNTR_CODE=="DE") 
+map_data <-geo_data %>%
+    left_join(df)
+map_data <- map_data[!duplicated(map_data$standort_id), c("gebiet", "standort", "hoehe", "typ")]
+
 
 # Define UI for application 
 ui <- fluidPage(
@@ -55,8 +61,15 @@ ui <- fluidPage(
             ),
         mainPanel(
             tabsetPanel(
-                tabPanel("Zeitreihen", plotlyOutput("first_plot")),
-                tabPanel("Standorte", plotlyOutput("map"))
+                tabPanel("Zeitreihen", 
+                         plotlyOutput("first_plot")
+                         ),
+                
+                tabPanel("Standorte", 
+                         plotlyOutput("map"),
+                         selectInput("select_type", "Select a variable to classify the sites.", 
+                                     choices = c("gebiet", "typ", "hoehe") )
+                         )
             )
         )
     )
@@ -138,7 +151,7 @@ server <- function(input, output, session) {
         p <- sf_germany %>%
             ggplot() +
             geom_sf() +
-            geom_sf(data = geo_data, color = "red")
+            geom_sf(data = map_data, size = 2, mapping = aes(text = standort, color = .data[[input$select_type]]))
         ggplotly(p)
     })
     

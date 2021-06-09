@@ -58,13 +58,14 @@ vars <- vars[["Schadstoff"]]
 ```{r}
 sf <- eurostat::get_eurostat_geospatial(output_class = "sf", nuts_level = 1)
 sf_germany <- sf %>% filter(CNTR_CODE=="DE") 
-
+map_data <-geo_data %>%
+  left_join(df)
+map_data <- map_data[!duplicated(map_data$standort_id), c("gebiet", "standort", "hoehe", "typ")]
 
 p <- sf_germany %>%
   ggplot() +
   geom_sf() +
-  geom_sf(data = geo_data, color = "red") +
-  geom_sf_label(aes(label = "klar"))
+  geom_sf(data = map_data, size = 2, mapping = aes(text = standort, color = typ))
 ggplotly(p)
 ```
 
