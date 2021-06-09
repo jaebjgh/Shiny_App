@@ -39,6 +39,8 @@ standorte_valid <- df[!duplicated(df$standort),"standort"][['standort']] #alle s
 standorte_all <- standorte_valid
 vars <- as.data.frame(x = names(df)[4:8]) %>% rename("Schadstoff" = "names(df)[4:8]") # alle Variablen
 vars <- vars[["Schadstoff"]]
+sf <- eurostat::get_eurostat_geospatial(output_class = "sf", nuts_level = 1)
+sf_germany <- sf %>% filter(CNTR_CODE=="DE") 
 
 # Define UI for application 
 ui <- fluidPage(
@@ -52,7 +54,10 @@ ui <- fluidPage(
             checkboxGroupInput("select_vars", "Select a site for the data.", choices = vars, selected = "stickstoffmonoxid"),
             ),
         mainPanel(
-            plotOutput("first_plot")
+            tabsetPanel(
+                tabPanel("Zeitreihen", plotlyOutput("first_plot")),
+                tabPanel("Standorte", plotlyOutput("map"))
+            )
         )
     )
 )
@@ -64,21 +69,27 @@ server <- function(input, output, session) {
     standorte_valid <- reactive({
         temp_df <- df
         for(i in standorte_all){
-            for(x in input$select_vars){
-                x <- temp_df %>% 
+            for(v in input$select_vars){
+                s <- temp_df %>% 
                 filter(standort == i) %>%
-                select(input$select_vars)%>%
+                select(v)%>%
                 summarise(sum(!is.na(.))) 
-                if(x == 0){
+                if(s == 0){
                     temp_df <- temp_df %>%
                         filter(standort != i)
                 }
             }
             
         }
-        standorte_valid <- (temp_df[!duplicated(temp_df$Standort),"Standort"][['standort']])
+        standorte_valid = temp_df[!duplicated(temp_df$standort),"standort"][['standort']]
+        updateSelectInput(session, "select_site",
+                          choices = standorte_valid,
+                          selected = head(standorte_valid,1))
+        return(standorte_valid)
     })
     
+    # check if the dataset has this emission
+    # not necessary anymorge thanks to updated choices
     has_emission <- function(){
         if(length(input$select_vars) == 0){
             return (TRUE)
@@ -89,28 +100,48 @@ server <- function(input, output, session) {
             summarise(sum(!is.na(.))) 
         x >= 1
     }
-
     
     
-    output$first_plot <- renderPlot({
+    
+    output$first_plot <- renderPlotly({
         
-        scale <- function(x, na.rm = TRUE) (x / first(na.omit(x)))
+        scale <- if(length(input$select_vars) > 1){
+            function(x, na.rm = TRUE) (x / first(na.omit(x)))   # function to scale the plotted data
+        }
+        else{
+            function(x, na.rm = TRUE) (x / 1)
+        }
+        standorte_valid()     # update input choices of sites
         
+        
+        # validation to have the user to check at least one emission
         validate(
-            need(input$select_vars, "Check at least one emission!"),
-            need(has_emission(), "Emission not available for this site. Sorry.")
+            need(input$select_vars, "Check at least one emission!")
+            #need(has_emission(), "Emission not available for this site. Sorry.")
         )
-        df %>%
+        
+        
+        ggplotly(df %>%
             filter(standort == input$select_site) %>%
             filter(datum >= input$slider[1] & datum <= input$slider[2] ) %>%
             select(c(standort, datum, input$select_vars)) %>%
-            mutate_at(input$select_vars, scale)%>%
+            mutate_at(input$select_vars, scale) %>%
             pivot_longer(cols =  input$select_vars, names_to = "variables") %>%
             ggplot(aes(datum, value, color = variables)) +
             geom_line(size = 0.5) +
             labs(title = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen"),
                  y = "Veränderung relativ zum Beginn", x = "Datum")
+        )
     })
+    
+    output$map <- renderPlotly({
+        p <- sf_germany %>%
+            ggplot() +
+            geom_sf() +
+            geom_sf(data = geo_data, color = "red")
+        ggplotly(p)
+    })
+    
     observe({
         # Make sure theme is kept current with desired
         session$setCurrentTheme(

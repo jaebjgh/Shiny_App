@@ -35,7 +35,7 @@ vars <- vars[["Schadstoff"]]
 ```{r}
 
 
-calculate_valid_standorte <- function(){
+#calculate_valid_standorte <- function(){
   temp_df <- df
   for(i in standorte){
     ds <- typeof(i)
@@ -49,13 +49,13 @@ calculate_valid_standorte <- function(){
       y <- "as"
     }
   }  
-}
+  (temp_df[!duplicated(temp_df$standort),"standort"][['standort']])
+#}
 
 ```
 
 ### Deutschlandkarte mit Bundeslandgrenzen
 ```{r}
-
 sf <- eurostat::get_eurostat_geospatial(output_class = "sf", nuts_level = 1)
 sf_germany <- sf %>% filter(CNTR_CODE=="DE") 
 
@@ -63,7 +63,8 @@ sf_germany <- sf %>% filter(CNTR_CODE=="DE")
 p <- sf_germany %>%
   ggplot() +
   geom_sf() +
-  geom_sf(data = geo_data, color = "red")
+  geom_sf(data = geo_data, color = "red") +
+  geom_sf_label(aes(label = "klar"))
 ggplotly(p)
 ```
 
