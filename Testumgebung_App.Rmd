@@ -19,6 +19,8 @@ library(tmap)
 library(eurostat)
 library(plotly)
 library(glue)
+library(leaflet)
+library(htmltools)
 ```
 
 ```{r}
@@ -68,6 +70,20 @@ p <- sf_germany %>%
   geom_sf(data = map_data, size = 2, mapping = aes(text = standort, color = typ))
 ggplotly(p)
 ```
+### leaflet
+```{r}
+map_data <- map_data %>%
+  mutate(content = glue::glue(paste(sep = "<br/>",
+  "<b><a>{standort}</a></b>",
+  "Höhe: {hoehe}m",
+  "Typ: {typ}")))
+
+m <- leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addMarkers(data = map_data$geometry, label = lapply(map_data$content, HTML)) 
+m
+```
+
 
 ### Plot the change of certain stations and variables
 

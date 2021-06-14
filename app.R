@@ -20,6 +20,7 @@ library(plotly)
 library(glue)
 library(showtext)
 library(bslib)
+library(leaflet)
 library(thematic)
 
 # Setup Theme
@@ -45,7 +46,11 @@ sf <- eurostat::get_eurostat_geospatial(output_class = "sf", nuts_level = 1)
 sf_germany <- sf %>% filter(CNTR_CODE=="DE") 
 map_data <-geo_data %>%
     left_join(df)
-map_data <- map_data[!duplicated(map_data$standort_id), c("gebiet", "standort", "hoehe", "typ")]
+map_data <- map_data[!duplicated(map_data$standort_id), c("gebiet", "standort", "hoehe", "typ")]%>%
+    mutate(content = glue::glue(paste(sep = "<br/>",
+                                      "<b><a>{standort}</a></b>",
+                                      "Höhe: {hoehe}m",
+                                      "Typ: {typ}")))
 
 
 # Define UI for application 
@@ -69,6 +74,9 @@ ui <- fluidPage(
                          plotlyOutput("map"),
                          selectInput("select_type", "Select a variable to classify the sites.", 
                                      choices = c("gebiet", "typ", "hoehe") )
+                         ),
+                tabPanel("Leaflet",
+                         leafletOutput("mymap")
                          )
             )
         )
@@ -143,7 +151,8 @@ server <- function(input, output, session) {
             ggplot(aes(datum, value, color = variables)) +
             geom_line(size = 0.5) +
             labs(title = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen"),
-                 y = "Veränderung relativ zum Beginn", x = "Datum")
+                 y = "Veränderung relativ zum Beginn", x = "Datum")+
+            theme_minimal()
         )
     })
     
@@ -153,6 +162,13 @@ server <- function(input, output, session) {
             geom_sf() +
             geom_sf(data = map_data, size = 2, mapping = aes(text = standort, color = .data[[input$select_type]]))
         ggplotly(p)
+    })
+    
+    output$mymap <- renderLeaflet({
+        m <- leaflet() %>%
+            addTiles() %>%  # Add default OpenStreetMap map tiles
+            addMarkers(data = map_data$geometry, label = lapply(map_data$content, HTML)) 
+        m
     })
     
     observe({
