@@ -24,7 +24,7 @@ library(leaflet)
 library(thematic)
 
 # Setup Theme
-my_theme <- bs_theme(bootswatch = "simplex",
+my_theme <- bs_theme(bootswatch = "flatly",
                      base_font = font_google("Fira Sans"))
 
 # thematic updates the plots and fonts to match the "my_theme"-theme
@@ -56,10 +56,34 @@ map_data <- map_data[!duplicated(map_data$standort_id), c("gebiet", "standort", 
 # Define UI for application 
 ui <- fluidPage(
     theme = my_theme,
-    titlePanel("Airquality"),
-    radioButtons("current_theme", "App Theme:", c("Light" = "simplex", "Dark" = "slate")),
+    fluidRow(
+        column(width = 10,
+               titlePanel(h2("Interactive Airquality Map"))),
+        column(width = 2,
+               radioButtons("current_theme", "App Theme:", c("Light" = "flatly", "Dark" = "darkly")))),
+    
+    
+    
     sidebarLayout(
         sidebarPanel(
+            
+            p("Welcome to this interactive map with",
+              strong("eight"),
+              "different airquality measuring sites in germany."),
+            p("You can choose from 5 different emissions down in the selection menu. The available
+              sites are updated in the dropdown menu depending on the chosen data from the selection Input."),
+            p("The sites locations are shown in the",
+              em("leaflet"),
+              "map below the time series plot!"),
+            p("To inspect the data in the time series plot further you can either zoom into the plot by
+              clicking and holding the mouse and then selecting a window of the desired data or by
+              using the slider input to select the range of the displayed data."),
+            p("The Plot always shows only the change of the measured emissions if you select more than one emission 
+              so that the plot doesn't have to show more than one y-axis."),
+            p("If you are using this shiny app late at night you can even switch to the dark mode by clicking
+              the radio button in the top right corner and selecting the",
+              em("Dark"),
+              "theme"),
             sliderInput("slider", label = "Select the range of the displayed data.", min = min(df$datum), max = max(df$datum), value = c(min(df$datum), max(df$datum))),
             selectInput("select_site", "Select a site for the data.", choices = standorte_valid, selected = "München/Landshuter Allee"),
             checkboxGroupInput("select_vars", "Select a site for the data.", choices = vars, selected = "stickstoffmonoxid"),
@@ -89,6 +113,7 @@ server <- function(input, output, session) {
     
     standorte_valid <- reactive({
         temp_df <- df
+        selected_site <- input$select_site
         for(i in standorte_all){
             for(v in input$select_vars){
                 s <- temp_df %>% 
@@ -102,11 +127,19 @@ server <- function(input, output, session) {
             }
             
         }
+        
         standorte_valid = temp_df[!duplicated(temp_df$standort),"standort"][['standort']]
+        if(selected_site %in% standorte_valid){
+            selected_site = selected_site
+        }
+        else{
+            selected_site = head(standorte_valid,1)
+        }
         updateSelectInput(session, "select_site",
                           choices = standorte_valid,
-                          selected = head(standorte_valid,1))
-        return(standorte_valid)
+                          selected = selected_site)
+        selected_site <- input$select_site                      
+        #return(standorte_valid)
     })
     
     # check if the dataset has this emission
@@ -140,7 +173,14 @@ server <- function(input, output, session) {
             need(input$select_vars, "Check at least one emission!")
             #need(has_emission(), "Emission not available for this site. Sorry.")
         )
-        
+        if(length(input$select_vars) > 1){
+            title_ = glue::glue("Veränderung der ausgewählten Emissionen")
+            y_ = "Veränderung relativ zum Beginn"
+        }
+        else{
+            title_ = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen")
+            y_ = "Ausstoß in Mikrogramm pro Kubikmeter"
+        }
         
         ggplotly(df %>%
             filter(standort == input$select_site) %>%
@@ -150,9 +190,8 @@ server <- function(input, output, session) {
             pivot_longer(cols =  input$select_vars, names_to = "variables") %>%
             ggplot(aes(datum, value, color = variables)) +
             geom_line(size = 0.5) +
-            labs(title = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen"),
-                 y = "Veränderung relativ zum Beginn", x = "Datum")+
-            theme_minimal()
+            labs(title = title_,
+                 y = y_, x = "Datum")
         )
     })
     

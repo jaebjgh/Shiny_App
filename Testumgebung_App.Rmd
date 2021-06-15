@@ -51,7 +51,8 @@ vars <- vars[["Schadstoff"]]
       y <- "as"
     }
   }  
-  (temp_df[!duplicated(temp_df$standort),"standort"][['standort']])
+((temp_df[!duplicated(temp_df$standort),"standort"][['standort']]))
+
 #}
 
 ```
