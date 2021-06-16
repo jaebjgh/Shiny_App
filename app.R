@@ -60,7 +60,7 @@ ui <- fluidPage(
         column(width = 10,
                titlePanel(h2("Interactive Airquality Map"))),
         column(width = 2,
-               radioButtons("current_theme", "App Theme:", c("Light" = "flatly", "Dark" = "darkly")))),
+               radioButtons("current_theme", "App Theme:", c("Light" = "flatly", "Dark" = "darkly"), inline = TRUE))),
     
     
     
@@ -84,25 +84,57 @@ ui <- fluidPage(
               the radio button in the top right corner and selecting the",
               em("Dark"),
               "theme"),
-            sliderInput("slider", label = "Select the range of the displayed data.", min = min(df$datum), max = max(df$datum), value = c(min(df$datum), max(df$datum))),
-            selectInput("select_site", "Select a site for the data.", choices = standorte_valid, selected = "München/Landshuter Allee"),
-            checkboxGroupInput("select_vars", "Select a site for the data.", choices = vars, selected = "stickstoffmonoxid"),
+            leafletOutput("mymap", height = 180)
+            #sliderInput("slider", label = "Select the range of the displayed data.", min = min(df$datum), max = max(df$datum), value = c(min(df$datum), max(df$datum))),
+            #selectInput("select_site", "Select a site for the data.", choices = standorte_valid, selected = "München/Landshuter Allee"),
+            #checkboxGroupInput("select_vars", "Select a site for the data.", choices = vars, selected = "stickstoffmonoxid"),
             ),
         mainPanel(
-            tabsetPanel(
-                tabPanel("Zeitreihen", 
-                         plotlyOutput("first_plot")
-                         ),
+            fluidRow(
+                column(1),
+                column(8, 
+                       plotlyOutput("first_plot")
+                ),
+                column(3, 
+                       wellPanel(
+                           selectInput("select_site", "Select a site for the data.", choices = standorte_valid, selected = "München/Landshuter Allee"),
+                           checkboxGroupInput("select_vars", "Select a site for the data.", choices = vars, selected = "stickstoffmonoxid"),
+                           sliderInput("slider", label = "Select the range of the displayed data.", min = min(df$datum), max = max(df$datum), value = c(min(df$datum), max(df$datum)))
+                       )
+                )
+                ),
+            fluidRow(br()),
+            fluidRow(
+                column(9, 
+                       plotlyOutput("second_plot")),
+                column(3, 
+                       wellPanel(
+                           selectInput("select_var", "Select a variable to calculate worst 5 sites.", choices = vars),
+                           br(),
+                           br(),
+                           br(),
+                           br()
+                           )
+                       )
                 
-                tabPanel("Standorte", 
-                         plotlyOutput("map"),
-                         selectInput("select_type", "Select a variable to classify the sites.", 
-                                     choices = c("gebiet", "typ", "hoehe") )
-                         ),
-                tabPanel("Leaflet",
-                         leafletOutput("mymap")
-                         )
-            )
+                
+            ),
+            #fluidRow(
+            #    column(6, leafletOutput("mymap", height = 300))),
+            #tabsetPanel(
+            #    tabPanel("Zeitreihen", 
+            #             plotlyOutput("first_plot")
+            #             ),
+            #    
+            #    tabPanel("Standorte", 
+            #             plotlyOutput("map"),
+            #             selectInput("select_type", "Select a variable to classify the sites.", 
+            #                         choices = c("gebiet", "typ", "hoehe") )
+            #             ),
+            #    tabPanel("Leaflet",
+            #             leafletOutput("mymap")
+            #             )
+            #)
         )
     )
 )
@@ -111,7 +143,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
     
     
-    standorte_valid <- reactive({
+    calc_standorte_valid <- function(){
         temp_df <- df
         selected_site <- input$select_site
         for(i in standorte_all){
@@ -140,7 +172,7 @@ server <- function(input, output, session) {
                           selected = selected_site)
         selected_site <- input$select_site                      
         #return(standorte_valid)
-    })
+    }
     
     # check if the dataset has this emission
     # not necessary anymorge thanks to updated choices
@@ -165,7 +197,7 @@ server <- function(input, output, session) {
         else{
             function(x, na.rm = TRUE) (x / 1)
         }
-        standorte_valid()     # update input choices of sites
+        calc_standorte_valid()     # update input choices of sites
         
         
         # validation to have the user to check at least one emission
@@ -174,12 +206,12 @@ server <- function(input, output, session) {
             #need(has_emission(), "Emission not available for this site. Sorry.")
         )
         if(length(input$select_vars) > 1){
-            title_ = glue::glue("Veränderung der ausgewählten Emissionen")
-            y_ = "Veränderung relativ zum Beginn"
+            title_ = glue::glue("Change of the calculated emission over time.")
+            y_ = "change relative to the beginning."
         }
         else{
-            title_ = glue::glue("Veränderung der {str_to_title(input$select_vars)}-Emissionen")
-            y_ = "Ausstoß in Mikrogramm pro Kubikmeter"
+            title_ = glue::glue("Change of the {str_to_title(input$select_vars)}-emissions")
+            y_ = "Emission in micrograms per cubic meter"
         }
         
         ggplotly(df %>%
@@ -191,7 +223,24 @@ server <- function(input, output, session) {
             ggplot(aes(datum, value, color = variables)) +
             geom_line(size = 0.5) +
             labs(title = title_,
-                 y = y_, x = "Datum")
+                 y = y_, x = "date"),
+            height = 400
+        )
+    })
+    
+    output$second_plot <- renderPlotly({
+        ggplotly(df %>%
+            select(c("datum", "standort", input$select_var)) %>%
+            drop_na() %>%
+            group_by(standort) %>%
+            summarise(mean = mean(!!sym(input$select_var), na.rm = TRUE)) %>%
+            arrange(mean) %>%
+                head(5) %>%
+            ggplot(aes(y = fct_reorder(standort, mean), x = mean, fill = standort)) +
+            geom_bar(stat = "identity") +
+            labs(title = glue::glue("mean value of the {input$select_var}-emissions"),
+                 y = "site", x = "mean value of the concentration"),
+            height = 300
         )
     })
     
@@ -205,7 +254,8 @@ server <- function(input, output, session) {
     
     output$mymap <- renderLeaflet({
         m <- leaflet() %>%
-            addTiles() %>%  # Add default OpenStreetMap map tiles
+            addProviderTiles(providers$CartoDB.Positron)%>%
+            #addTiles() %>%  # Add default OpenStreetMap map tiles
             addMarkers(data = map_data$geometry, label = lapply(map_data$content, HTML)) 
         m
     })

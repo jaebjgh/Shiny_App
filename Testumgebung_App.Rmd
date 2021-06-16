@@ -51,7 +51,7 @@ vars <- vars[["Schadstoff"]]
       y <- "as"
     }
   }  
-((temp_df[!duplicated(temp_df$standort),"standort"][['standort']]))
+standorte_valid <- ((temp_df[!duplicated(temp_df$standort),"standort"][['standort']]))
 
 #}
 
@@ -110,11 +110,12 @@ plotly::ggplotly(p)
 
 ### Größten Verschmutzer je nach Zeitraum und Variable
 ```{r}
-var = c("stickstoffmonoxid")
+var = c("kohlenmonoxid")
 range = c("2020-01-01", "2021-01-01")
 
 df %>%
-  select(c("datum", "standort", var)) %>%
+  select(c("datum", "standort", "hoehe", var)) %>%
+  filter(standort  %in% standorte_valid) %>%
   group_by(standort) %>%
   summarise(mean = mean(!!sym(var), na.rm = TRUE)) %>%
   arrange(mean) %>%
