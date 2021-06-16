@@ -70,24 +70,22 @@ ui <- fluidPage(
             p("Welcome to this interactive map with",
               strong("eight"),
               "different airquality measuring sites in germany."),
-            p("You can choose from 5 different emissions down in the selection menu. The available
-              sites are updated in the dropdown menu depending on the chosen data from the selection Input."),
+            p("You can choose from 5 different emissions in the selection menues. The available
+              sites for the first plot are updated in the dropdown menu depending on the chosen data from the selection Input."),
             p("The sites locations are shown in the",
               em("leaflet"),
-              "map below the time series plot!"),
+              "map below!"),
             p("To inspect the data in the time series plot further you can either zoom into the plot by
               clicking and holding the mouse and then selecting a window of the desired data or by
-              using the slider input to select the range of the displayed data."),
+              using the slider input to the right to select the range of the displayed data."),
             p("The Plot always shows only the change of the measured emissions if you select more than one emission 
               so that the plot doesn't have to show more than one y-axis."),
+            p("In the second plot below you can choose from the 5 emissions and inspect the 5 sites with the highest average selected emission."),
             p("If you are using this shiny app late at night you can even switch to the dark mode by clicking
               the radio button in the top right corner and selecting the",
               em("Dark"),
               "theme"),
             leafletOutput("mymap", height = 180)
-            #sliderInput("slider", label = "Select the range of the displayed data.", min = min(df$datum), max = max(df$datum), value = c(min(df$datum), max(df$datum))),
-            #selectInput("select_site", "Select a site for the data.", choices = standorte_valid, selected = "München/Landshuter Allee"),
-            #checkboxGroupInput("select_vars", "Select a site for the data.", choices = vars, selected = "stickstoffmonoxid"),
             ),
         mainPanel(
             fluidRow(
@@ -119,22 +117,6 @@ ui <- fluidPage(
                 
                 
             ),
-            #fluidRow(
-            #    column(6, leafletOutput("mymap", height = 300))),
-            #tabsetPanel(
-            #    tabPanel("Zeitreihen", 
-            #             plotlyOutput("first_plot")
-            #             ),
-            #    
-            #    tabPanel("Standorte", 
-            #             plotlyOutput("map"),
-            #             selectInput("select_type", "Select a variable to classify the sites.", 
-            #                         choices = c("gebiet", "typ", "hoehe") )
-            #             ),
-            #    tabPanel("Leaflet",
-            #             leafletOutput("mymap")
-            #             )
-            #)
         )
     )
 )
